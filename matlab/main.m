@@ -1,52 +1,61 @@
-% Temporal smoothing trials for the vector sensor
+% Temporal smoothing (TS) trials for the vector sensor
 % Summer 2020
+% Last updated: 9/11/2020
 % Will Howard, {wwhoward}@vt.edu
 % wireless @ VT
 
 % Notation:
 % A multipath state of [1 1] indicates one signal on two paths
-% Similarly, [1 2] indicates two signals on one path each
-% So [1 1 2 3] indicates one signal on two paths, and two more signals on
-% one path each
- 
+% Similarly, [1 2] indicates two signals on one path each and [1 1 2 3] indicates one signal on two paths + two more signals on one path each
 
 
 
 clc,clear,close all
-addpath('data', 'Helper');
+addpath('data', 'Helper'); 
 
 %% Set parameters! 
-par.K = 2; % Keep K <= 4: This is the total incident paths on the sensor
-par.type = '1d'; % ['1d', '2d']
-par.signal_length = 2^13; % Long enough to fit blocks*(snapshot+interboock)
-par.mod = 'QPSK';
-par.interblock = 10;
-par.pathdelay = 0;
-%par.blocks = par.K+1;
-par.blocks = 3;
-par.blockSweep = 1:10;
-par.snapshot = 2^9;
-par.res = 2^12 / pi;
-par.SNR = 20;
-par.forceMulti = false;
-%par.forcePath = [1 1 2 3]; % set par.forcePath = [] for random path configuration. Overrides par.K, so be careful using this
-par.forcePath = [1 1];
-par.Trials = 100;
-par.snrSweepEnable = true;
-par.snrSweep = -20:5:30;
-par.saveFlag = 0;  % Should anything be saved? 
-par.saveLight = 1; % Should everything be saved or just statistics? 
-par.saveName = "SNR_sweep_2block"; % Appends this to the name for seperability
-par.savePlots = 1; % Save plots as fig, eps, png
-% par.runtype = 'single'; % {'single','snr_sweep','block_sweep'}
-par.runtype = 'snr_sweep'; % {'single','snr_sweep','block_sweep'}
-par.recombination = 'rnd'; % {'rnd','max'}
+% Multipath Scenarios
+par.K = 3;                  % Keep K <= 4: This is the total incident paths on the sensor. This is overwritten if par.forcePath is not empty. 
+par.forceMulti = false;     % If true, enables path states of [1], [1 2], etc
+par.forcePath = [1 1];      % set par.forcePath = [] for random path configuration. Overrides par.K, so be careful using this
+par.type = '1d';            % Problem dimensionality in {'1d', '2d'}. Effects MUSIC-type searches as well as DoA ground truth assignments. 
+
+% Signal settings
+par.signal_length = 2^13;   % Long enough to fit blocks*(snapshot+interboock)
+par.mod = 'QPSK';           % Modulation scheme in {'QPSK'}, more added if needed
+par.interblock = [5 10];    % Delay between TS blocks. Samples randomly in this range [a b]. 
+par.pathdelay = [1 3];      % Delay between different recieved paths. If this is a range [a,b], samples randomly. 
+par.blocks = 3;             % Number of blocks for TS averaging. (par.K+1 is a good default)
+par.blockSweep = 1:10;      % Specific to runtype 'blocksweep': varies number of blocks each run
+par.snapshot = 2^9;         % Snapshot window for signals
+par.SNR = 20;               % Static SNR for runtype 'single'
+par.snrSweep = 10:30;       % Variable SNR for runtypes other than 'single'
+
+% Estimation & Statistics
+par.res = 2^12 / pi;        % Resolution for MUSIC-type estimators
+par.recombination = 'rnd';  % {'rnd','max'}
+
+% Simulation
+par.Trials = 10000;         % During a sweep, how many trials for each parameter
+par.runtype = 'single';     % {'single','snr_sweep','block_sweep','ml_gen'} - names are fairly self-explainitory
+
+% Save configuration
+par.saveFlag = 0;           % Should anything be saved? NOTE: Overridden to 0 for runtype 'single'
+par.saveLight = 1;          % Should everything be saved or just statistics? 
+par.saveName = "ml_test";   % Appends this to the name for seperability (edited later to be unique)
+par.savePlots = 0;          % Save plots as fig, eps, png
+
+
+
+
 
 
 %% 
 
 switch par.runtype
     case 'single'
+        
+    par.saveFlag = 0; % Nothing to save for single runs, so set saveFlag to 0
     paths = assign_paths(par); % Assign directions of arrival and multipath state
 
 
@@ -151,7 +160,6 @@ switch par.runtype
     annotation('textbox', [0.2, 0.2, 0.1, 0.1], 'string', 'One signal, two paths')
 
 %% Let's try sweeping the number of blocks
-
     case 'block_sweep'
     for b=1:length(par.blockSweep)
         par.blocks = par.blockSweep(b);
@@ -193,8 +201,54 @@ switch par.runtype
     ylim([10^-1 10^3])
     xlabel('Number of Blocks')
     ylabel('RMSE')
+    
+    
+%% Generate ML dataset
+    case 'ml_gen'
+    X = zeros(par.Trials, 42);
+    if isempty(par.forcePath)
+        Y = zeros(par.Trials, par.K);
+    else
+        Y = zeros(par.Trials, length(par.forcePath));
+    end
+    
+    for trial = 1:par.Trials
+        par.SNR = (par.snrSweep(end)-par.snrSweep(1)).*rand+par.snrSweep(1);
 
+        paths = assign_paths(par);
+        signal = transmitter(paths, par);
+        signal = reciever(signal, paths, par);
+        signal = temporal_smooth(signal, par);
+
+        est_ts = est_drmusic(signal.ts, par);
+        est_nts = est_drmusic(signal.R, par);
+
+        stats.ts(trial) = calc_stats(est_ts, signal, par, paths);
+        stats.nts(trial) = calc_stats(est_nts, signal, par, paths);
+        
+        S2 = triu(signal.ts);
+        S2 = nonzeros(S2);
+        S = [real(S2);imag(S2)];
+        
+        X(trial,:) = S;
+        Y(trial,:) = paths.AoA(:,2);
+        
+        RMSCE_ts(trial) = stats.ts(trial).rmsce_deg;
+        RMSCE_nts(trial) = stats.nts(trial).rmsce_deg;
+
+        RMSE_ts(trial) = stats.ts(trial).rmse_deg;
+        RMSE_nts(trial) = stats.nts(trial).rmse_deg;
+
+        norecom_RMSE_ts(trial) = stats.ts(trial).norecom_rmse_deg;
+        norecom_RMSE_nts(trial) = stats.nts(trial).norecom_rmse_deg;
+
+        recom_percent_ts(trial) = stats.ts(trial).recom_percent;
+        recom_percent_nts(trial) = stats.nts(trial).recom_percent;
+        
+        
+    end
 end
+
 
 
 %% Save shtuff
@@ -346,7 +400,9 @@ for b=1:par.blocks
                 h = 1;
             end
             a = paths.signal_vector(k).path(p,:)';
-            sig = tx(k, 1+(b-1)*par.interblock+(p-1)*par.pathdelay : par.snapshot + (b-1)*par.interblock + (p-1)*par.pathdelay);
+            del = randi(par.pathdelay);
+            block = randi(par.interblock);
+            sig = tx(k, 1+(b-1)*block+(p-1)*del : par.snapshot + (b-1)*block + (p-1)*del);
             rx(b, :,:) = h*a*sig + squeeze(rx(b,:,:));
 %             display('got here')
             % rx(b,6,par.snapshot)=sqrt(0.5)*(randn+1j*randn)*paths.signal_vector(k).path(p,:)'*tx(k, b*par.interblock+(k-1)*par.pathdelay:par.snapshot-1+b*par.interblock+(k-1)*par.pathdelay)+rx(b,:,:);
