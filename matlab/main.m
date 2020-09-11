@@ -272,7 +272,8 @@ if par.saveFlag
         end
     end
 end
-%% Functions that make it do the work
+
+%% Functions (local for now, might seperate this large file into several in the future)
 function [] = plott(x, stats, paths, t)
 figure
 plot(x.phi, x.spectrum)
@@ -287,7 +288,7 @@ xlabel('Azimuth')
 end
 
 function [] = plot_rmse(rmse, snrSweep)
-    
+    % Work item
 
 end
 
