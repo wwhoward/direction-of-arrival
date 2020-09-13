@@ -17,32 +17,35 @@ addpath('data', 'Helper');
 % Multipath Scenarios
 par.K = 3;                  % Keep K <= 4: This is the total incident paths on the sensor. This is overwritten if par.forcePath is not empty. 
 par.forceMulti = false;     % If true, enables path states of [1], [1 2], etc
-par.forcePath = [1 1];      % set par.forcePath = [] for random path configuration. Overrides par.K, so be careful using this
+par.forcePath = [1 1];    % set par.forcePath = [] for random path configuration. Overrides par.K, so be careful using this
 par.type = '1d';            % Problem dimensionality in {'1d', '2d'}. Effects MUSIC-type searches as well as DoA ground truth assignments. 
+par.minSep = pi/10;         % Minimum separation between azimuth AoA (in radians)
 
 % Signal settings
 par.signal_length = 2^13;   % Long enough to fit blocks*(snapshot+interboock)
 par.mod = 'QPSK';           % Modulation scheme in {'QPSK'}, more added if needed
-par.interblock = [5 10];    % Delay between TS blocks. Samples randomly in this range [a b]. 
-par.pathdelay = [1 3];      % Delay between different recieved paths. If this is a range [a,b], samples randomly. 
+par.interblock = [5 5];     % Delay between TS blocks. Samples randomly in this range [a b]. 
+par.pathdelay = [0 0];      % Delay between different recieved paths. If this is a range [a,b], samples randomly. 
 par.blocks = 3;             % Number of blocks for TS averaging. (par.K+1 is a good default)
 par.blockSweep = 1:10;      % Specific to runtype 'blocksweep': varies number of blocks each run
 par.snapshot = 2^9;         % Snapshot window for signals
-par.SNR = 20;               % Static SNR for runtype 'single'
+par.SNR = 10;               % Static SNR for runtype 'single', overwritten for sweeps
 par.snrSweep = 10:30;       % Variable SNR for runtypes other than 'single'
 
 % Estimation & Statistics
-par.res = 2^12 / pi;        % Resolution for MUSIC-type estimators
+par.res = 2^6 / pi;         % Resolution for MUSIC-type estimators
 par.recombination = 'rnd';  % {'rnd','max'}
+par.scrub = true;           % Additional variable for ml generation - removes RMSE outliers - NOTE: If true, then X (output from ml_gen) takes on the "clean" values
+par.sampling = 1;           % WORK IN PROGRESS DON'T CHANGE - Calculate statistics for this percent of trials (includes DoA estimation & statistics) - lower value speeds up processing. Only implemented in "ml_gen"                   
 
 % Simulation
-par.Trials = 10000;         % During a sweep, how many trials for each parameter
+par.Trials = 1000;          % During a sweep, how many trials for each parameter
 par.runtype = 'single';     % {'single','snr_sweep','block_sweep','ml_gen'} - names are fairly self-explainitory
 
 % Save configuration
-par.saveFlag = 0;           % Should anything be saved? NOTE: Overridden to 0 for runtype 'single'
-par.saveLight = 1;          % Should everything be saved or just statistics? 
-par.saveName = "ml_test";   % Appends this to the name for seperability (edited later to be unique)
+par.saveFlag = 1;           % Should anything be saved? NOTE: Overridden to 0 for runtype 'single'
+par.saveLight = 0;          % Should everything be saved or just statistics? 
+par.saveName = "ml_clean";  % Appends this to the name for ease of identification (edited later to be unique)
 par.savePlots = 0;          % Save plots as fig, eps, png
 
 
@@ -56,6 +59,11 @@ switch par.runtype
     case 'single'
         
     par.saveFlag = 0; % Nothing to save for single runs, so set saveFlag to 0
+    
+    if ~isempty(par.forcePath)
+        par.K = length(par.forcePath);
+    end
+    
     paths = assign_paths(par); % Assign directions of arrival and multipath state
 
 
@@ -75,8 +83,11 @@ switch par.runtype
     stats_nts = calc_stats(est_nts, signal, par, paths);
 
     % Plot the results! 
-    plott(est_ts, stats_ts, paths, 'Temporal Smoothing - Three Signals - DR-MUSIC')
-    plott(est_nts, stats_nts, paths, 'No Smoothing - Three Signals - DR-MUSIC')
+    
+    str1 = 'Temporal Smoothing - '+string(par.K)+' Signals - DR-MUSIC';
+    str2 = 'No Smoothing - '+string(par.K)+' Signals - DR-MUSIC';
+    plott(est_ts, stats_ts, paths, str1)
+    plott(est_nts, stats_nts, paths, str2)
 
     display(stats_ts.rmse_deg)
     display(stats_ts.rmsce_deg)
@@ -205,6 +216,7 @@ switch par.runtype
     
 %% Generate ML dataset
     case 'ml_gen'
+    clc    
     X = zeros(par.Trials, 42);
     if isempty(par.forcePath)
         Y = zeros(par.Trials, par.K);
@@ -212,19 +224,20 @@ switch par.runtype
         Y = zeros(par.Trials, length(par.forcePath));
     end
     
+    sample=1;
     for trial = 1:par.Trials
+        
+        % Display Progress
+        if mod(trial, round(0.1*par.Trials))==0
+            clc
+            fprintf("%i%% complete", 100*trial/par.Trials)
+        end
         par.SNR = (par.snrSweep(end)-par.snrSweep(1)).*rand+par.snrSweep(1);
 
         paths = assign_paths(par);
         signal = transmitter(paths, par);
         signal = reciever(signal, paths, par);
         signal = temporal_smooth(signal, par);
-
-        est_ts = est_drmusic(signal.ts, par);
-        est_nts = est_drmusic(signal.R, par);
-
-        stats.ts(trial) = calc_stats(est_ts, signal, par, paths);
-        stats.nts(trial) = calc_stats(est_nts, signal, par, paths);
         
         S2 = triu(signal.ts);
         S2 = nonzeros(S2);
@@ -233,19 +246,36 @@ switch par.runtype
         X(trial,:) = S;
         Y(trial,:) = paths.AoA(:,2);
         
-        RMSCE_ts(trial) = stats.ts(trial).rmsce_deg;
-        RMSCE_nts(trial) = stats.nts(trial).rmsce_deg;
+        if rand<=par.sampling
+            est_ts = est_drmusic(signal.ts, par);
+            est_nts = est_drmusic(signal.R, par);
 
-        RMSE_ts(trial) = stats.ts(trial).rmse_deg;
-        RMSE_nts(trial) = stats.nts(trial).rmse_deg;
+            stats.ts(sample) = calc_stats(est_ts, signal, par, paths);
+            stats.nts(sample) = calc_stats(est_nts, signal, par, paths);
 
-        norecom_RMSE_ts(trial) = stats.ts(trial).norecom_rmse_deg;
-        norecom_RMSE_nts(trial) = stats.nts(trial).norecom_rmse_deg;
+            RMSCE_ts(sample) = stats.ts(sample).rmsce_deg;
+            RMSCE_nts(sample) = stats.nts(sample).rmsce_deg;
 
-        recom_percent_ts(trial) = stats.ts(trial).recom_percent;
-        recom_percent_nts(trial) = stats.nts(trial).recom_percent;
+            RMSE_ts(sample) = stats.ts(sample).rmse_deg;
+            RMSE_nts(sample) = stats.nts(sample).rmse_deg;
+
+            norecom_RMSE_ts(sample) = stats.ts(sample).norecom_rmse_deg;
+            norecom_RMSE_nts(sample) = stats.nts(sample).norecom_rmse_deg;
+
+            recom_percent_ts(sample) = stats.ts(sample).recom_percent;
+            recom_percent_nts(sample) = stats.nts(sample).recom_percent;
+            
+            sample=sample+1;
+        end
+    end
+    
+    if par.scrub==1 % Filter outliers away
+        dirty_X = X;
+        dirty_Y = Y;
         
-        
+        clean_idx = find(RMSE_ts<5);
+        X   = X(clean_idx, :);
+        Y   = Y(clean_idx, :);
     end
 end
 
@@ -264,6 +294,10 @@ if par.saveFlag
     else
         save(savename)
     end
+    
+    clc
+    display('Data saved as '+savename)
+    
     if par.savePlots
         mkdir(savename)
         FigList = findobj(allchild(0), 'flat', 'Type', 'figure');
@@ -276,12 +310,13 @@ end
 %% Functions (local for now, might seperate this large file into several in the future)
 function [] = plott(x, stats, paths, t)
 figure
-plot(x.phi, x.spectrum)
+plt = plot(x.phi, x.spectrum);
 hold on; 
 
-for p=1:length(paths.AoA(:,2)); xline(paths.AoA(p,2), '--r'); end
-for e=1:length(x.peaks); plot(x.peaks(e), x.peakvals(e), 'ro', 'MarkerSize', 10); end
+for p=1:length(paths.AoA(:,2)); l_plt(p)=xline(paths.AoA(p,2), '--r'); end
+for e=1:min(length(paths.AoA(:,2)), length(x.peaks)); p_plt(e)=plot(x.peaks(e), x.peakvals(e), 'ro', 'MarkerSize', 10); end
 title(t)
+legend([plt, l_plt(1), p_plt(1)],'Spatial Spectrum', 'True Angle', 'Estimated Angle');
 set(gca,'XTick',0:pi/2:2*pi)
 set(gca,'XTickLabel',{'0','pi/2','pi','3*pi/2','2*pi'})
 xlabel('Azimuth')
@@ -349,6 +384,8 @@ switch par.type
         stats.norecom_err_deg = stats.err(stats.recom_flag==0)/pi * 180;
         stats.norecom_mse_deg = sum(stats.norecom_err_deg.^2)/length(stats.norecom_err_deg);
         stats.norecom_rmse_deg = sqrt(stats.norecom_mse_deg);
+        
+        stats.SNR = par.SNR;
 end
 end
 
@@ -371,7 +408,9 @@ switch par.type
             est.spectrum(i) = 1/min(real(eig((est.DOA_function(:,:,i)'*NoiseSpace*NoiseSpace'*est.DOA_function(:,:,i))))); % This should be real since B should be hermitian, but due to computational error, there will be some small imaginary part. Take abs() or real() to correct
         end
         
-        [est.peakvals, peak_idx] = findpeaks(est.spectrum);
+        [peakvals, peak_idx] = findpeaks(est.spectrum);
+        [est.peakvals, idx] = sort(peakvals, 'descend');
+        peak_idx = peak_idx(idx);
         est.peaks = est.phi(peak_idx);        
 end
 end
@@ -500,7 +539,7 @@ end
 
 % Assign azimuth and elevation (or if type = '1d', just azimuth)
 switch par.type
-    case '2d'
+    case '2d' % Needs minSep still
         paths.AoA = [];
         for k=1:paths.sources
             for p=1:paths.multi(k)
@@ -511,14 +550,40 @@ switch par.type
         end
     case '1d'
         paths.AoA = [];
+        Azi = assignAzi(par);
+        minSepFlag=0;
+        if min(diff(sort(Azi)))<par.minSep
+            minSepFlag=1;
+        end
+        while ~isempty(par.minSep) && minSepFlag==1
+            Azi = assignAzi(par);
+            if min(diff(sort(Azi)))>=par.minSep
+                minSepFlag=0;
+            end
+        end
         for k=1:paths.sources
             for p = 1:paths.multi(k)
-                azi = rand*2*pi;
+                azi = Azi(1);
                 ele = pi/2 + 0.01*rand;
                 paths.AoA = [paths.AoA,; [ele, azi]];
                 [~,~,paths.signal_vector(k).path(p,:)] = VectorSensor([ele,azi], [pi/2*rand, 2*pi*rand-pi]);
+                Azi(1)=[];
             end
+            
+                
         end
+        
 end
 
+end
+
+function azi = assignAzi(par)
+    if isempty(par.forcePath)
+        k = par.K;
+    else
+        k = length(par.forcePath);
+    end
+    for i=1:k
+        azi(i) = rand*2*pi;
+    end
 end
