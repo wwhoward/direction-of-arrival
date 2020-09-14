@@ -25,12 +25,12 @@ par.minSep = pi/10;         % Minimum separation between azimuth AoA (in radians
 par.signal_length = 2^13;   % Long enough to fit blocks*(snapshot+interboock)
 par.mod = 'QPSK';           % Modulation scheme in {'QPSK'}, more added if needed
 par.interblock = [5 5];     % Delay between TS blocks. Samples randomly in this range [a b]. 
-par.pathdelay = [0 0];      % Delay between different recieved paths. If this is a range [a,b], samples randomly. 
+par.pathdelay = [1 1];      % Delay between different recieved paths. If this is a range [a,b], samples randomly. 
 par.blocks = 3;             % Number of blocks for TS averaging. (par.K+1 is a good default)
 par.blockSweep = 1:10;      % Specific to runtype 'blocksweep': varies number of blocks each run
 par.snapshot = 2^9;         % Snapshot window for signals
 par.SNR = 10;               % Static SNR for runtype 'single', overwritten for sweeps
-par.snrSweep = 10:30;       % Variable SNR for runtypes other than 'single'
+par.snrSweep = 25:30;       % Variable SNR for runtypes other than 'single'
 
 % Estimation & Statistics
 par.res = 2^6 / pi;         % Resolution for MUSIC-type estimators
@@ -39,13 +39,13 @@ par.scrub = true;           % Additional variable for ml generation - removes RM
 par.sampling = 1;           % WORK IN PROGRESS DON'T CHANGE - Calculate statistics for this percent of trials (includes DoA estimation & statistics) - lower value speeds up processing. Only implemented in "ml_gen"                   
 
 % Simulation
-par.Trials = 1000;          % During a sweep, how many trials for each parameter
-par.runtype = 'single';     % {'single','snr_sweep','block_sweep','ml_gen'} - names are fairly self-explainitory
+par.Trials = 10000;          % During a sweep, how many trials for each parameter
+par.runtype = 'ml_gen';     % {'single','snr_sweep','block_sweep','ml_gen'} - names are fairly self-explainitory
 
 % Save configuration
 par.saveFlag = 1;           % Should anything be saved? NOTE: Overridden to 0 for runtype 'single'
 par.saveLight = 0;          % Should everything be saved or just statistics? 
-par.saveName = "ml_clean";  % Appends this to the name for ease of identification (edited later to be unique)
+par.saveName = "ml_1sig_2path";  % Appends this to the name for ease of identification (edited later to be unique)
 par.savePlots = 0;          % Save plots as fig, eps, png
 
 
@@ -218,6 +218,7 @@ switch par.runtype
     case 'ml_gen'
     clc    
     X = zeros(par.Trials, 42);
+    X_nts = X;
     if isempty(par.forcePath)
         Y = zeros(par.Trials, par.K);
     else
@@ -243,8 +244,14 @@ switch par.runtype
         S2 = nonzeros(S2);
         S = [real(S2);imag(S2)];
         
+        S2_nts = triu(signal.R);
+        S2_nts = nonzeros(S2_nts);
+        S_nts = [real(S2_nts); imag(S2_nts)];
+        
         X(trial,:) = S;
         Y(trial,:) = paths.AoA(:,2);
+        
+        X_nts(trial,:) = S_nts;
         
         if rand<=par.sampling
             est_ts = est_drmusic(signal.ts, par);
@@ -275,7 +282,9 @@ switch par.runtype
         
         clean_idx = find(RMSE_ts<5);
         X   = X(clean_idx, :);
-        Y   = Y(clean_idx, :);
+        Y   = sort(Y(clean_idx, :),2);
+        
+        X_nts_clean = X_nts(clean_idx, :);
     end
 end
 
@@ -420,8 +429,8 @@ function signal = temporal_smooth(signal, par)
 R_ts = zeros(6,6);
 r = zeros(par.blocks, 6,6);
 for b=1:par.blocks
-    r(b,:,:) = 1/par.snapshot * squeeze(signal.rx(b,:,:))*squeeze(signal.rx(b,:,:))';
-    R_ts(:,:) = 1/par.blocks * squeeze(r(b,:,:)) + R_ts(:,:);
+    r(b,:,:) = 1/par.snapshot * squeeze(signal.rx(b,:,:))*squeeze(signal.rx(b,:,:))'; % Calculate covariance for this block, weighted by the length of the window
+    R_ts(:,:) = 1/par.blocks * squeeze(r(b,:,:)) + R_ts(:,:); % TS covariance is the weighted sum of block covariances
 end
 signal.ts = R_ts;
 end
@@ -435,23 +444,21 @@ for b=1:par.blocks
     for k=1:paths.sources
         for p=1:paths.multi(k)
             if p ~= 1
-                h = sqrt(0.5)*(randn+1j*randn);
+                h = sqrt(0.5)*(randn+1j*randn); % Random complex path gain if multipath is present
             else
-                h = 1;
+                h = 1; % Unit path gain if multipath is not present
             end
-            a = paths.signal_vector(k).path(p,:)';
-            del = randi(par.pathdelay);
-            block = randi(par.interblock);
-            sig = tx(k, 1+(b-1)*block+(p-1)*del : par.snapshot + (b-1)*block + (p-1)*del);
-            rx(b, :,:) = h*a*sig + squeeze(rx(b,:,:));
-%             display('got here')
-            % rx(b,6,par.snapshot)=sqrt(0.5)*(randn+1j*randn)*paths.signal_vector(k).path(p,:)'*tx(k, b*par.interblock+(k-1)*par.pathdelay:par.snapshot-1+b*par.interblock+(k-1)*par.pathdelay)+rx(b,:,:);
+            a = paths.signal_vector(k).path(p,:)'; % Array manifold for desired AoA of this source&path
+            del = randi(par.pathdelay); % Path delay, random in specified range
+            block = randi(par.interblock); % Block delay, random in specified range
+            sig = tx(k, 1+(b-1)*block+(p-1)*del : par.snapshot + (b-1)*block + (p-1)*del); % Window the source appropriately, given desired delays
+            rx(b, :,:) = h*a*sig + squeeze(rx(b,:,:)); % Sum cumulative signal with current source, multiplying by array manifold & path gain
         end
     end
 end
-signal.rx = awgn(rx, par.SNR);
+signal.rx = awgn(rx, par.SNR); % Add AWGN at specified SNR
 
-signal.R = 1/par.snapshot * squeeze(signal.rx(1,:,:))*squeeze(signal.rx(1,:,:))';
+signal.R = 1/par.snapshot * squeeze(signal.rx(1,:,:))*squeeze(signal.rx(1,:,:))'; % Calculate covariance matrix for the first block
 
 end
 
