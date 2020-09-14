@@ -1,6 +1,9 @@
 # direction-of-arrival
 Project code for DoA estimation
 
+Will W Howard
+wwhoward@vt.edu
+
 
 MATLAB
 
