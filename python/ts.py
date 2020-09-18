@@ -10,31 +10,8 @@ import sys
 import matplotlib.pyplot as plt
 import scipy as sc
 import sk_dsp_comm
-from sk_dsp_comm import digitalcom
-import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-os.environ["KMP_DUPLICATE_LIB_OK"] = "0"   # sometime make "1" for Mac 
-
-
 import math
-import hdf5storage as h5
-import random
-import tensorflow as tf
-import keras.backend.tensorflow_backend as KTF
-from keras import regularizers
-from keras.models import Model, Sequential
-from keras.layers import Input, Dense, Lambda, Reshape, Conv1D, Conv2D,\
-        AveragePooling2D,Flatten, Dropout, SimpleRNN, LSTM, concatenate, Layer
-from keras.layers.normalization import BatchNormalization
-from keras.callbacks import EarlyStopping
-from numpy import ma
-from matplotlib import cm as CM
-import keras
-from keras import callbacks 
-from datetime import datetime
-from keras.models import model_from_json
-from numpy import linalg as la
-import time
+
 
 
 
