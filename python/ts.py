@@ -2,7 +2,7 @@
 """
 Temporal smoothing (TS) trials for the vector sensor
 Fall 2020
-Last updated: 9/11/2020
+Last updated: 9/17/2020
 Will Howard, {wwhoward}@vt.edu
 wireless @ VT
 """
