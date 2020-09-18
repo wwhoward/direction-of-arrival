@@ -15,7 +15,7 @@ addpath('data', 'Helper');
 
 %% Set parameters! 
 % Multipath Scenarios
-par.K = 3;                  % Keep K <= 4: This is the total incident paths on the sensor. This is overwritten if par.forcePath is not empty. 
+par.K = 2;                  % Keep K <= 4: This is the total incident paths on the sensor. This is overwritten if par.forcePath is not empty. 
 par.forceMulti = false;     % If true, enables path states of [1], [1 2], etc
 par.forcePath = [1 1];    % set par.forcePath = [] for random path configuration. Overrides par.K, so be careful using this
 par.type = '1d';            % Problem dimensionality in {'1d', '2d'}. Effects MUSIC-type searches as well as DoA ground truth assignments. 
@@ -25,11 +25,11 @@ par.minSep = pi/10;         % Minimum separation between azimuth AoA (in radians
 par.signal_length = 2^13;   % Long enough to fit blocks*(snapshot+interboock)
 par.mod = 'QPSK';           % Modulation scheme in {'QPSK'}, more added if needed
 par.interblock = [5 5];     % Delay between TS blocks. Samples randomly in this range [a b]. 
-par.pathdelay = [1 1];      % Delay between different recieved paths. If this is a range [a,b], samples randomly. 
+par.pathdelay = [0 0];      % Delay between different recieved paths. If this is a range [a,b], samples randomly. 
 par.blocks = 3;             % Number of blocks for TS averaging. (par.K+1 is a good default)
 par.blockSweep = 1:10;      % Specific to runtype 'blocksweep': varies number of blocks each run
-par.snapshot = 2^9;         % Snapshot window for signals
-par.SNR = 10;               % Static SNR for runtype 'single', overwritten for sweeps
+par.snapshot = 2^10;         % Snapshot window for signals
+par.SNR = 20;               % Static SNR for runtype 'single', overwritten for sweeps
 par.snrSweep = 25:30;       % Variable SNR for runtypes other than 'single'
 
 % Estimation & Statistics
@@ -40,7 +40,7 @@ par.sampling = 1;           % WORK IN PROGRESS DON'T CHANGE - Calculate statisti
 
 % Simulation
 par.Trials = 10000;          % During a sweep, how many trials for each parameter
-par.runtype = 'ml_gen';     % {'single','snr_sweep','block_sweep','ml_gen'} - names are fairly self-explainitory
+par.runtype = 'single';     % {'single','snr_sweep','block_sweep','ml_gen'} - names are fairly self-explainitory
 
 % Save configuration
 par.saveFlag = 1;           % Should anything be saved? NOTE: Overridden to 0 for runtype 'single'
@@ -79,20 +79,20 @@ switch par.runtype
     est_ts = est_drmusic(signal.ts, par); % Estimate the DoA for the TS case
     est_nts = est_drmusic(signal.R, par); % Estimate the DoA without smoothing
 
-    stats_ts = calc_stats(est_ts, signal, par, paths);
-    stats_nts = calc_stats(est_nts, signal, par, paths);
+    %stats_ts = calc_stats(est_ts, signal, par, paths);
+    %stats_nts = calc_stats(est_nts, signal, par, paths);
 
     % Plot the results! 
     
     str1 = 'Temporal Smoothing - '+string(par.K)+' Signals - DR-MUSIC';
     str2 = 'No Smoothing - '+string(par.K)+' Signals - DR-MUSIC';
-    plott(est_ts, stats_ts, paths, str1)
-    plott(est_nts, stats_nts, paths, str2)
+    plott(est_ts, paths, par, str1)
+    %plott(est_nts, paths, par, str2)
 
-    display(stats_ts.rmse_deg)
-    display(stats_ts.rmsce_deg)
-    display(stats_nts.rmse_deg)
-    display(stats_nts.rmsce_deg)
+%     display(stats_ts.rmse_deg)
+%     display(stats_ts.rmsce_deg)
+%     display(stats_nts.rmse_deg)
+%     display(stats_nts.rmsce_deg)
 
 %% Now try a complicated run where we average the results from 500 trials of path=[1,1,2]
 
@@ -317,18 +317,32 @@ if par.saveFlag
 end
 
 %% Functions (local for now, might seperate this large file into several in the future)
-function [] = plott(x, stats, paths, t)
-figure
-plt = plot(x.phi, x.spectrum);
-hold on; 
+function [] = plott(est, paths, par, t)
+switch par.type
+    case '1d'
+        figure
+        plt = plot(est.phi, est.spectrum);
+        hold on; 
 
-for p=1:length(paths.AoA(:,2)); l_plt(p)=xline(paths.AoA(p,2), '--r'); end
-for e=1:min(length(paths.AoA(:,2)), length(x.peaks)); p_plt(e)=plot(x.peaks(e), x.peakvals(e), 'ro', 'MarkerSize', 10); end
-title(t)
-legend([plt, l_plt(1), p_plt(1)],'Spatial Spectrum', 'True Angle', 'Estimated Angle');
-set(gca,'XTick',0:pi/2:2*pi)
-set(gca,'XTickLabel',{'0','pi/2','pi','3*pi/2','2*pi'})
-xlabel('Azimuth')
+        for p=1:length(paths.AoA(:,2)); l_plt(p)=xline(paths.AoA(p,2), '--r'); end
+        for e=1:min(length(paths.AoA(:,2)), length(est.peaks_azi)); p_plt(e)=plot(est.peaks_azi(e), est.peak_val(e), 'ro', 'MarkerSize', 10); end
+        title(t)
+        legend([plt, l_plt(1), p_plt(1)],'Spatial Spectrum', 'True Angle', 'Estimated Angle');
+        set(gca,'XTick',0:pi/2:2*pi)
+        set(gca,'XTickLabel',{'0','pi/2','pi','3*pi/2','2*pi'})
+        xlabel('Azimuth')
+    case '2d'
+        figure
+        surf(est.spectrum); 
+        hold on; 
+        grid off;
+        for i=1:min(length(paths.AoA(:,2)), length(est.peaks_azi))
+            l_plt(i) = plot3(est.peaks_ele(i), est.peaks_azi(i), est.peak_val(i), '.r', 'MarkerSize', 30); 
+        end
+        for i=1:length(paths.AoA(:,2))
+            p_plt(i) = plot3((size(est.spectrum,2)/pi *paths.AoA(i, 1)), (size(est.spectrum,1)/(2*pi) * paths.AoA(i, 2)), max(est.spectrum(:)), '.b', 'MarkerSize',20);
+        end
+end
 end
 
 function [] = plot_rmse(rmse, snrSweep)
@@ -338,12 +352,72 @@ end
 
 function stats = calc_stats(est, signal, par, paths)
 switch par.type
-    case '1d'
+    case '1d' % need to separate into azi err, ele err
         u = paths.AoA(:,2)';
-        uh = est.peaks;
+        uh = est.peaks_azi;
 
         for i=1:length(u)
             if ~isempty(uh)
+                [stats.err(i), closestIndex] = min(abs(u(i) - uh.'));
+                closestValue(i) = uh(closestIndex);
+                uh(closestIndex) = [];
+                stats.corrected_err(i) = pi/180 * abs(CalculateAngleDifference(180/pi * u(i), 180/pi * closestValue(i), 'azi')); % this function requires units of degrees
+                stats.recom_flag(i) = 0;
+            else % if there are fewer than K estimates, we set the error of the extra ones to max (pi)
+                if par.recombination == 'max'
+                    stats.err(i) = pi;
+                    stats.corrected_err(i) = pi;
+                    closestValue = [];
+                    stats.recom_flag(i) = 1;
+                elseif par.recombination == 'rnd'
+                    stats.err(i) = pi*rand;
+                    stats.corrected_err(i) = stats.err(i);
+                    closestValue = [];
+                    stats.recom_flag(i) = 1;
+                end
+            end
+            
+        end
+        
+        
+        stats.u = u;
+        stats.uh = closestValue;
+        
+        stats.mse = sum(stats.err.^2)/length(stats.err);
+        stats.rmse = sqrt(stats.mse);
+        
+        stats.err_deg = stats.err/pi * 180;
+        stats.mse_deg = sum(stats.err_deg.^2)/length(stats.err_deg);
+        stats.rmse_deg = sqrt(stats.mse_deg);
+        
+        
+        stats.msce = sum(stats.corrected_err.^2)/length(stats.corrected_err);
+        stats.rmsce = sqrt(stats.msce);
+        
+        stats.corrected_err_deg = stats.corrected_err/pi * 180;
+        stats.msce_deg = sum(stats.corrected_err_deg.^2)/length(stats.corrected_err_deg);
+        stats.rmsce_deg = sqrt(stats.msce_deg);
+        
+        
+        % Now calculate these for only the non-recom cases
+        stats.recom_percent = sum(stats.recom_flag)/length(stats.recom_flag);
+        stats.norecom_mse = sum(stats.err(stats.recom_flag==0).^2)/length(stats.err(stats.recom_flag==0)); 
+        stats.norecom_rmse = sqrt(stats.norecom_mse);
+        
+        stats.norecom_err_deg = stats.err(stats.recom_flag==0)/pi * 180;
+        stats.norecom_mse_deg = sum(stats.norecom_err_deg.^2)/length(stats.norecom_err_deg);
+        stats.norecom_rmse_deg = sqrt(stats.norecom_mse_deg);
+        
+        stats.SNR = par.SNR;
+        
+    case '2d'
+        azi_u = paths.AoA(:,2)';
+        ele_u = paths.AoA(:,1)';
+        azi_uh = est.peaks_azi;
+        ele_uh = est.peaks_ele;
+
+        for i=1:length(azi_u)
+            if ~isempty(azi_uh)
                 [stats.err(i), closestIndex] = min(abs(u(i) - uh.'));
                 closestValue(i) = uh(closestIndex);
                 uh(closestIndex) = [];
@@ -418,9 +492,41 @@ switch par.type
         end
         
         [peakvals, peak_idx] = findpeaks(est.spectrum);
-        [est.peakvals, idx] = sort(peakvals, 'descend');
+        [est.peak_val, idx] = sort(peakvals, 'descend');
         peak_idx = peak_idx(idx);
-        est.peaks = est.phi(peak_idx);        
+        est.peaks_azi = est.phi(peak_idx);    % azimuth indices of peaks
+        
+    case '2d'
+        est.phi = 0:1/par.res:2*pi; 
+        est.tht = 0:1/par.res:pi; 
+        
+        est.DOA_function = zeros(6, 2, size(est.phi,2), size(est.tht,2));
+        for ph = 1:size(est.phi,2)
+            for th = 1:size(est.tht,2)
+                [est.DOA_function(:,:,ph,th),~,~] = VectorSensor([est.tht(th), est.phi(ph)], [pi/4, 0]);
+            end
+        end
+        
+        [eigvect, eigval]=eig(R);
+        [~, idx] = sort(diag(eigval));
+        NoiseSpace = eigvect(:, idx(1:length(idx)-par.K));
+        
+        est.spectrum = zeros(size(est.DOA_function,3), size(est.DOA_function,4));
+        for ph=1:size(est.DOA_function, 3)
+            for th=1:size(est.DOA_function,4)
+                est.spectrum(ph,th) = 1/min(real(eig((est.DOA_function(:,:,ph,th)'*NoiseSpace*NoiseSpace'*est.DOA_function(:,:,ph,th)))));
+            end
+        end
+        
+        peaks_idx = FastPeakFind(est.spectrum);
+        azi_peaks = peaks_idx(2:2:end);
+        ele_peaks = peaks_idx(1:2:end);
+        [est.peak_val, sorted_idx] = sort(diag(est.spectrum(azi_peaks, ele_peaks)), 'descend');
+        est.peaks_azi = azi_peaks(sorted_idx);
+        est.peaks_ele = ele_peaks(sorted_idx);
+        
+        
+        
 end
 end
 
@@ -443,7 +549,7 @@ rx = zeros(par.blocks, 6, par.snapshot);
 for b=1:par.blocks
     for k=1:paths.sources
         for p=1:paths.multi(k)
-            if p ~= 1
+            if paths.multi ~= 1
                 h = sqrt(0.5)*(randn+1j*randn); % Random complex path gain if multipath is present
             else
                 h = 1; % Unit path gain if multipath is not present
@@ -490,7 +596,7 @@ function paths = assign_paths(par)
 % Creates path object based on inputs:
 % par.K: total number of paths
 % par.type: '1d or '2d'
-
+% 
 % outputs path object with parameters
 % paths.sources : total number of sources
 % paths.multi : vector showing how many paths per source
@@ -548,18 +654,36 @@ end
 switch par.type
     case '2d' % Needs minSep still
         paths.AoA = [];
-        for k=1:paths.sources
-            for p=1:paths.multi(k)
-                [azi,ele] = RandUniformSphere([1,1]);
-                paths.AoA(:, :) = [paths.AoA [azi, ele]'];
-                
+        [Azi, Ele] = assignAoA(par);
+        minSepFlag=0;
+        
+        if length(Azi) ~= 1
+            if min(diff(sort(Azi)))<par.minSep || min(diff(sort(Ele)))<par.minSep% check if minSep criteria is met
+                minSepFlag=1;
             end
         end
+        
+        while ~isempty(par.minSep) && minSepFlag==1
+            [Azi, Ele] = assignAoA(par);
+            if min(diff(sort(Azi)))>=par.minSep && min(diff(sort(Ele)))>=par.minSep
+                minSepFlag=0;
+            end
+        end
+        for k=1:paths.sources
+            for p = 1:paths.multi(k)
+                azi = Azi(1);
+                ele = Ele(1);
+                paths.AoA = [paths.AoA,; [ele, azi]];
+                [~,~,paths.signal_vector(k).path(p,:)] = VectorSensor([ele,azi], [pi/2*rand, 2*pi*rand-pi]);
+                Azi(1)=[];
+                Ele(1)=[];
+            end               
+        end     
     case '1d'
         paths.AoA = [];
         Azi = assignAzi(par);
         minSepFlag=0;
-        if min(diff(sort(Azi)))<par.minSep
+        if min(diff(sort(Azi)))<par.minSep % check if minSep criteria is met
             minSepFlag=1;
         end
         while ~isempty(par.minSep) && minSepFlag==1
@@ -575,11 +699,8 @@ switch par.type
                 paths.AoA = [paths.AoA,; [ele, azi]];
                 [~,~,paths.signal_vector(k).path(p,:)] = VectorSensor([ele,azi], [pi/2*rand, 2*pi*rand-pi]);
                 Azi(1)=[];
-            end
-            
-                
-        end
-        
+            end               
+        end        
 end
 
 end
@@ -593,4 +714,17 @@ function azi = assignAzi(par)
     for i=1:k
         azi(i) = rand*2*pi;
     end
+end
+
+function [azi, ele] = assignAoA(par)
+    if isempty(par.forcePath)
+        k = par.K;
+    else
+        k = length(par.forcePath);
+    end
+    vector = randn(3, k);
+    unitVector = vector./sqrt(sum(vector.^2,1));
+    [azi,ele] = cart2sph(unitVector(1,:),unitVector(2,:),unitVector(3,:));
+    ele = ele + pi/2;    
+    azi = azi + pi;
 end
