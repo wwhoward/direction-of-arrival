@@ -44,8 +44,9 @@ par.scrub = true;           % Additional variable for ml generation - removes RM
 par.sampling = 1;           % WORK IN PROGRESS DON'T CHANGE - Calculate statistics for this percent of trials (includes DoA estimation & statistics) - lower value speeds up processing. Only implemented in "ml_gen"                   
 
 % Simulation
-par.Trials = 1000;          % During a sweep, how many trials for each parameter
+par.Trials = 100;          % During a sweep, how many trials for each parameter
 par.runtype = 'single';     % {'single','snr_sweep','block_sweep','ml_gen'} - names are fairly self-explainitory
+par.accelerate = 1;         % See below
 
 % Save configuration
 par.saveFlag = 1;           % Should anything be saved? NOTE: Overridden to 0 for runtype 'single'
@@ -70,3 +71,29 @@ Multipath Simulation
 We use the following notation to represent multipath scenarios: Each source is assigned a number, starting with 1, then the number of paths for that source is represented by multiplicity of it's number. So, for one signal on two paths, we have [1 1]. 
 
 To simulate multipath reception of a signal, we use the delay-then-sum technique. Path delays are specified as a parameter (above), and can be randomized in a range. 
+
+par.accelerate: 
+
+Run the following code in the matlab command window, with the root matlab folder for this project open in the "current folder" window, then set par.accelerate to "1". This enables the use of a 3rd party function to do multidimensional matrix multiplication & eigenvalue calculation. 
+
+-------
+libdir = 'microsoft';
+comp = computer;
+mext = mexext;
+lc = length(comp);
+lm = length(mext);
+cbits = comp(max(1:lc-1):lc);
+mbits = mext(max(1:lm-1):lm);
+if( isequal(cbits,'64') || isequal(mbits,'64') )
+compdir = 'win64';
+largearraydims = '-largeArrayDims';
+else
+compdir = 'win32';
+largearraydims = '';
+end
+lib_blas = [matlabroot '\extern\lib\' compdir '\' libdir '\libmwblas.lib'];
+d = dir('mtimesx.m');
+mname = [d.folder '/' d.name];
+cname = [mname(1:end-2) '.c'];
+mex(cname,largearraydims,lib_blas,'COMPFLAGS="$COMPFLAGS /openmp"');
+---\\---

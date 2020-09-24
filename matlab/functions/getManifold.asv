@@ -1,0 +1,23 @@
+function [DOA_function, phi, tht] = getManifold(par)
+%GETMANIFOLD Summary of this function goes here
+%   Detailed explanation goes here
+
+switch par.type
+    case '1d'
+        est.phi = 0:1/par.res:2*pi;
+        for ph = 1:size(est.phi,2)
+            [est.DOA_function(:,:,ph),~,~] = VectorSensor([pi/2,est.phi(ph)],[pi/4,0]);
+        end
+    case '2d'
+        est.phi = 0:1/par.res:2*pi;
+        est.tht = 0:1/par.res:pi;
+        
+        DOA_function = zeros(6, 2, size(est.phi,2), size(est.tht,2));
+        for ph = 1:size(est.phi,2)
+            for th = 1:size(est.tht,2)
+                [DOA_function(:,:,ph,th),~,~] = VectorSensor([est.tht(th), est.phi(ph)], [pi/4, 0]);
+            end
+        end
+end
+end
+
