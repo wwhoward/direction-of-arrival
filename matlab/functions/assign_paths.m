@@ -63,7 +63,7 @@ end
 
 % Assign azimuth and elevation (or if type = '1d', just azimuth)
 switch par.type
-    case '2d' % Needs minSep still
+    case '2d' 
         paths.AoA = [];
         [Azi, Ele] = assignAoA(par);
         minSepFlag=0;
@@ -98,6 +98,11 @@ switch par.type
         paths.AoA = [];
         Azi = assignAzi(par);
         minSepFlag=0;
+        
+        while ~all(Azi >= par.aziRange(1) & Azi <= par.aziRange(2))
+            Azi = assignAzi(par);
+        end
+        
         if min(diff(sort(Azi)))<par.minSep % check if minSep criteria is met
             minSepFlag=1;
         end
@@ -110,7 +115,7 @@ switch par.type
         for k=1:paths.sources
             for p = 1:paths.multi(k)
                 azi = Azi(1);
-                ele = pi/2 + 0.01*rand;
+                ele = pi/2; + 0.0001*rand;
                 paths.AoA = [paths.AoA,; [ele, azi]];
                 [~,~,paths.signal_vector(k).path(p,:)] = VectorSensor([ele,azi], [pi/2*rand, 2*pi*rand-pi]);
                 Azi(1)=[];
