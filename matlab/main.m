@@ -10,21 +10,22 @@
 
 clc,clear,close all
 addpath('data', 'Helper', 'functions', 'runtype', 'configs', 'Helper/mtimesx', 'Helper/Eig3Folder'); 
-par2 = load('2d_ml_linpol'); % Load saved parameters. Note that if the saved file doesn't have par.x, it will be replaced by whatever par.x is below. 
+par2 = load('sept_2_hires_2d'); % Load saved parameters. Note that if the saved file doesn't have par.x, it will be replaced by whatever par.x is below. 
 par2 = par2.par;
 
 
 % Set parameters! 
 % Multipath Scenarios
-par.K = 3;                  % Keep K <= 4: This is the total incident paths on the sensor. This is overwritten if par.forcePath is not empty. 
+par.K = 2;                  % Keep K <= 4: This is the total incident paths on the sensor. This is overwritten if par.forcePath is not empty. 
 par.forceMulti = false;     % If true, enables path states of [1], [1 2], etc
-par.forcePath = [1 1 1];    % set par.forcePath = [] for random path configuration. Overrides par.K, so be careful using this
+par.forcePath = [1 1];    % set par.forcePath = [] for random path configuration. Overrides par.K, so be careful using this
 par.type = '2d';            % Problem dimensionality in {'1d', '2d'}. Effects MUSIC-type searches as well as DoA ground truth assignments. 
 par.minSep = pi/10;         % Minimum separation between azimuth AoA (in radians)
 par.aziRange = [pi/20, 39*pi/20]; % Specify range that azimuths must be in
 par.eleRange = [pi/20, 19*pi/20]; % Same for elevations
 par.polType = 'rnd_lin';        % {'rnd_lin', 'rnd'}
 par.forcePol = [];          % Not implemented yet, don't use
+par.powerDecay = 0.5;       % Set to 1 to ignore.  Fraction of power lost on each multipath (i.e. first path has powerDecay^0, 2nd powerDecay^1, ...
 
 % Signal settings
 par.signal_length = 2^13;   % Long enough to fit blocks*(snapshot+interboock)
@@ -56,10 +57,11 @@ par.savePlots = 1;          % Save plots as fig, eps, png
 
 [par.DOA_function, par.DOA_function_inverse, par.phi, par.tht] = getManifold(par);
 
-
+if exist('par2', 'var')
 sameFields = string(intersect(fieldnames(par2), fieldnames(par)));
 for f = 1:length(sameFields)
     par.(sameFields(f)) = par2.(sameFields(f));    
+end
 end
 %---------------------\\-------------------------
 
