@@ -57,8 +57,14 @@ switch par.type
                 end
             end
         end
-
+        
         peaks_idx = FastPeakFind(est.spectrum);
+        if isempty(peaks_idx)
+            [Xmax, Imax] = extrema2(est.spectrum);
+            [x_idx, y_idx] = ind2sub(size(est.spectrum),Imax(1:10));
+            peaks_idx = [y_idx';x_idx'];
+            peaks_idx = peaks_idx(:)';
+        end
         azi_peaks = peaks_idx(2:2:end);
         ele_peaks = peaks_idx(1:2:end);
         [est.peak_val, sorted_idx] = sort(diag(est.spectrum(azi_peaks, ele_peaks)), 'descend');

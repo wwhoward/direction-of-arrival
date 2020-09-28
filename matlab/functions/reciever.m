@@ -20,7 +20,18 @@ for b=1:par.blocks
             del = randi(par.pathdelay); % Path delay, random in specified range
             block = randi(par.interblock); % Block delay, random in specified range
             sig = tx(k, 1+(b-1)*block+(p-1)*del : par.snapshot + (b-1)*block + (p-1)*del); % Window the source appropriately, given desired delays
-            rx(b, :,:) = par.powerDecay^p * h*a*sig + squeeze(rx(b,:,:)); % Sum cumulative signal with current source, multiplying by array manifold & path gain
+            switch par.decayType
+                case 'none'
+                    rx(b, :,:) = h*a*sig + squeeze(rx(b,:,:)); % Sum cumulative signal with current source, multiplying by array manifold & path gain
+                case 'exp'
+                    rx(b, :,:) = par.powerDecay^(p-1) * h*a*sig + squeeze(rx(b,:,:)); % Sum cumulative signal with current source, multiplying by array manifold & path gain
+                case 'rnd'
+                    if p==1
+                        rx(b, :,:) = h*a*sig + squeeze(rx(b,:,:)); % Sum cumulative signal with current source, multiplying by array manifold & path gain
+                    else
+                        rx(b, :,:) = ((1-par.powerDecay)*rand+par.powerDecay) * h*a*sig + squeeze(rx(b,:,:)); % Sum cumulative signal with current source, multiplying by array manifold & path gain
+                    end
+            end
         end
     end
 end

@@ -69,14 +69,17 @@ switch par.type
         [Azi, Ele] = assignAoA(par);
         minSepFlag=0;
         
-        if par.polType == 'rnd_lin'
+        if par.polType == "rnd_lin"
             Pol1 = pi/2 * rand(par.K, 1);
             Pol2 = zeros(par.K, 1);
-        elseif par.polType == 'rnd'
+        elseif par.polType == "rnd"
             Pol1 = pi/2 * rand(par.K, 1);
-            Pol2 = 2*pi*rand-pi;
+            Pol2 = 2*pi*rand(par.K,1)-pi;
         end
         
+%         while min(diff(sort(Pol1)))<par.minSep
+%             Pol1 = pi/2 * rand(par.K, 1);
+%         end
 %         while ~all(Azi >= par.aziRange(1) & Azi <= par.aziRange(2)) || ~all(Ele >= par.eleRange(1) & Ele <= par.eleRange(2))
 %             [Azi, Ele] = assignAoA(par);
 %         end
@@ -114,12 +117,12 @@ switch par.type
         Azi = assignAzi(par);
         minSepFlag=0;
         
-        if par.polType == 'rnd_lin'
+        if par.polType == "rnd_lin"
             Pol1 = pi/2 * rand(par.K, 1);
             Pol2 = zeros(par.K, 1);
-        elseif par.polType == 'rnd'
+        elseif par.polType == "rnd"
             Pol1 = pi/2 * rand(par.K, 1);
-            Pol2 = 2*pi*rand-pi;
+            Pol2 = 2*pi*rand(par.K,1)-pi;
         end
         
 %         while 

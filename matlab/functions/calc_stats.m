@@ -95,8 +95,8 @@ switch par.type
         
         for p = 1:min(length(azi_uh), length(azi_u))            
             [tru_idx, est_idx] = find(dist_matrix == min(new_dist(:)));
-            tru_idx = intersect(tru_idx, unused_tru);
-            est_idx = intersect(est_idx, unused_est);
+            tru_idx = min(intersect(tru_idx, unused_tru));
+            est_idx = min(intersect(est_idx, unused_est));
             peak_idx(tru_idx) = est_idx;
             err(tru_idx) = dist_matrix(tru_idx, est_idx);
             azi_uh_ordered(tru_idx) = azi_uh(est_idx);

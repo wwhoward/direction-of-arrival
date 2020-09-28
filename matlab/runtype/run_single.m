@@ -30,8 +30,8 @@ stats_nts = calc_stats(est_nts, signal, par, paths);
 
 % Plot the results!
 
-str1 = 'Temporal Smoothing - '+string(par.K)+' Signals - DR-MUSIC';
-str2 = 'No Smoothing - '+string(par.K)+' Signals - DR-MUSIC';
+str1 = 'Temporal Smoothing - '+string(par.K)+' Total Paths - DR-MUSIC';
+str2 = 'No Smoothing - '+string(par.K)+' Total Paths - DR-MUSIC';
 plott(est_ts, paths, par, stats_ts, str1)
 plott(est_nts, paths, par, stats_nts, str2)
 
