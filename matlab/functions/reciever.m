@@ -11,7 +11,7 @@ rx = zeros(par.blocks, 6, par.snapshot);
 for b=1:par.blocks
     for k=1:paths.sources
         for p=1:paths.multi(k)
-            if paths.multi ~= 1
+            if paths.multi(k) ~= 1
                 h = sqrt(0.5)*(randn+1j*randn); % Random complex path gain if multipath is present
             else
                 h = 1; % Unit path gain if multipath is not present
