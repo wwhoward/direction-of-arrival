@@ -2,11 +2,6 @@ function [X, Y, RMSE, stats] = run_ml_gen(par)
 clc
 X = zeros(par.Trials, 42);
 X_nts = X;
-if isempty(par.forcePath)
-    Y = zeros(par.Trials, par.K);
-else
-    Y = zeros(par.Trials, length(par.forcePath));
-end
 
 sample=1;
 switch par.type
@@ -18,10 +13,20 @@ switch par.type
         norecom_RMSE_ts = zeros(1, par.Trials);
         
         recom_percent_ts = zeros(1, par.Trials);
+        if isempty(par.forcePath)
+            Y = zeros(par.Trials, par.K);
+        else
+            Y = zeros(par.Trials, length(par.forcePath));
+        end
     case '2d'
         RMSAE_ts = zeros(1, par.Trials);
         
         norecom_RMSAE_ts = zeros(1, par.Trials);
+        if isempty(par.forcePath)
+            Y = zeros(par.Trials, par.K*2);
+        else
+            Y = zeros(par.Trials, length(par.forcePath)*2);
+        end
 end
 for trial = 1:par.Trials
     
@@ -46,7 +51,13 @@ for trial = 1:par.Trials
     S_nts = [real(S2_nts); imag(S2_nts)];
     
     X(trial,:) = S;
-    Y(trial,:) = paths.AoA(:,2);
+    switch par.type 
+        case '1d'
+            Y(trial,:) = paths.AoA(:,2);
+        case '2d'
+            Y(trial,:) = [paths.AoA(:,1);paths.AoA(:,2)]';
+    end
+    
     
     X_nts(trial,:) = S_nts;
     
@@ -83,7 +94,11 @@ if par.scrub==1 % Filter outliers away
     
     clean_idx = find(RMSE<5);
     X   = X(clean_idx, :);
-    Y   = sort(Y(clean_idx, :),2);
+    if par.type == '1d'
+        Y   = [pi/2 * ones(size(Y(clean_idx, :))), sort(Y(clean_idx, :), 2)];
+    elseif par.type == '2d'
+        Y   = [sort(Y(clean_idx,1:2),2), sort(Y(clean_idx,3:4),2)];
+    end
     
     X_nts_clean = X_nts(clean_idx, :);
 end

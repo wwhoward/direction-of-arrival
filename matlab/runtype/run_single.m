@@ -32,8 +32,8 @@ stats_nts = calc_stats(est_nts, signal, par, paths);
 
 str1 = 'Temporal Smoothing - '+string(par.K)+' Signals - DR-MUSIC';
 str2 = 'No Smoothing - '+string(par.K)+' Signals - DR-MUSIC';
-plott(est_ts, paths, par, str1)
-plott(est_nts, paths, par, str2)
+plott(est_ts, paths, par, stats_ts, str1)
+plott(est_nts, paths, par, stats_nts, str2)
 
 %elapsedTime = toc
 switch par.type

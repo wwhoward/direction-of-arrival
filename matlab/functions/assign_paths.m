@@ -65,12 +65,21 @@ end
 switch par.type
     case '2d' 
         paths.AoA = [];
+        paths.Pol = [];
         [Azi, Ele] = assignAoA(par);
         minSepFlag=0;
         
-        while ~all(Azi >= par.aziRange(1) & Azi <= par.aziRange(2)) || ~all(Ele >= par.eleRange(1) & Ele <= par.eleRange(2))
-            [Azi, Ele] = assignAoA(par);
+        if par.polType == 'rnd_lin'
+            Pol1 = pi/2 * rand(par.K, 1);
+            Pol2 = zeros(par.K, 1);
+        elseif par.polType == 'rnd'
+            Pol1 = pi/2 * rand(par.K, 1);
+            Pol2 = 2*pi*rand-pi;
         end
+        
+%         while ~all(Azi >= par.aziRange(1) & Azi <= par.aziRange(2)) || ~all(Ele >= par.eleRange(1) & Ele <= par.eleRange(2))
+%             [Azi, Ele] = assignAoA(par);
+%         end
         
         if length(Azi) ~= 1
             if min(diff(sort(Azi)))<par.minSep || min(diff(sort(Ele)))<par.minSep% check if minSep criteria is met
@@ -78,7 +87,7 @@ switch par.type
             end
         end
         
-        while ~isempty(par.minSep) && minSepFlag==1
+        while (~isempty(par.minSep) && minSepFlag==1) || ~all(Azi >= par.aziRange(1) & Azi <= par.aziRange(2)) || ~all(Ele >= par.eleRange(1) & Ele <= par.eleRange(2))
             [Azi, Ele] = assignAoA(par);
             if min(diff(sort(Azi)))>=par.minSep && min(diff(sort(Ele)))>=par.minSep
                 minSepFlag=0;
@@ -88,25 +97,39 @@ switch par.type
             for p = 1:paths.multi(k)
                 azi = Azi(1);
                 ele = Ele(1);
-                paths.AoA = [paths.AoA,; [ele, azi]];
-                [~,~,paths.signal_vector(k).path(p,:)] = VectorSensor([ele,azi], [pi/2*rand, 2*pi*rand-pi]);
+                pol1 = Pol1(1);
+                pol2 = Pol2(1);
+                paths.AoA = [paths.AoA; [ele, azi]];
+                paths.Pol = [paths.Pol; [pol1, pol2]];
+                [~,~,paths.signal_vector(k).path(p,:)] = VectorSensor([ele,azi], [pol1, pol2]);
                 Azi(1)=[];
                 Ele(1)=[];
+                Pol1(1) = [];
+                Pol2(1) = [];
             end               
         end     
     case '1d'
         paths.AoA = [];
+        paths.Pol = [];
         Azi = assignAzi(par);
         minSepFlag=0;
         
-        while ~all(Azi >= par.aziRange(1) & Azi <= par.aziRange(2))
-            Azi = assignAzi(par);
+        if par.polType == 'rnd_lin'
+            Pol1 = pi/2 * rand(par.K, 1);
+            Pol2 = zeros(par.K, 1);
+        elseif par.polType == 'rnd'
+            Pol1 = pi/2 * rand(par.K, 1);
+            Pol2 = 2*pi*rand-pi;
         end
+        
+%         while 
+%             Azi = assignAzi(par);
+%         end
         
         if min(diff(sort(Azi)))<par.minSep % check if minSep criteria is met
             minSepFlag=1;
         end
-        while ~isempty(par.minSep) && minSepFlag==1
+        while (~isempty(par.minSep) && minSepFlag==1) || ~all(Azi >= par.aziRange(1) & Azi <= par.aziRange(2))
             Azi = assignAzi(par);
             if min(diff(sort(Azi)))>=par.minSep
                 minSepFlag=0;
@@ -115,10 +138,15 @@ switch par.type
         for k=1:paths.sources
             for p = 1:paths.multi(k)
                 azi = Azi(1);
-                ele = pi/2; + 0.0001*rand;
-                paths.AoA = [paths.AoA,; [ele, azi]];
-                [~,~,paths.signal_vector(k).path(p,:)] = VectorSensor([ele,azi], [pi/2*rand, 2*pi*rand-pi]);
+                ele = pi/2;
+                pol1 = Pol1(1);
+                pol2 = Pol2(1);
+                paths.AoA = [paths.AoA; [ele, azi]];
+                paths.Pol = [paths.Pol; [pol1, pol2]];
+                [~,~,paths.signal_vector(k).path(p,:)] = VectorSensor([ele,azi], [pol1, pol2]);
                 Azi(1)=[];
+                Pol1(1) = [];
+                Pol2(1) = [];
             end               
         end        
 end

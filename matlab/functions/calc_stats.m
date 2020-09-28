@@ -33,6 +33,7 @@ switch par.type
         end
         
         
+        
         stats.u = u;
         stats.uh = closestValue;
         
@@ -68,46 +69,51 @@ switch par.type
         ele_u = paths.AoA(:,1)';
         %azi_uh = zeros(size(azi_u));
         %ele_uh = zeros(size(azi_u));
-        if isempty(est.peaks_azi)
+        azi_uh = est.peaks_azi;
+        ele_uh = est.peaks_ele;
+        stats.azi_uh = azi_uh;
+        stats.ele_uh = ele_uh;
+        stats.peak_val = est.peak_val;
+        stats.recom_flag = zeros(size(azi_u));
+        if  isempty(azi_uh)
             azi_uh = rand(size(azi_u))*pi;
-            ele_uh = rand(size(azi_u))*pi;
-        else
-            azi_uh = est.peaks_azi;
-            ele_uh = est.peaks_ele;
+            ele_uh = rand(size(ele_u))*pi/2;
+            stats.recom_flag = ones(size(azi_u));
         end
-        azi_uh_ordered = zeros(size(azi_u));
-        ele_uh_ordered = zeros(size(ele_u));
         
         % Assign estimates to truth
-        dist_matrix = abs(acos(sin(ele_u') * sin(ele_uh) + cos(ele_u') * cos(ele_uh).* cos(azi_u'-azi_uh)));
         
-        [err, peak_idx] = min(dist_matrix, [], 2);
-        peak_idx = reshape(peak_idx, size(azi_u));
-        azi_uh_ordered = azi_uh(peak_idx);
-        ele_uh_ordered = ele_uh(peak_idx);
+        dist_matrix = abs(acos(sin(ele_u') * sin(ele_uh) + cos(ele_u)' * cos(ele_uh).* cos(min(abs(azi_u'-azi_uh), abs(azi_u'-azi_uh - pi)))));
+        peak_idx = zeros(size(azi_u));
+        azi_uh_ordered = zeros(size(azi_u));
+        ele_uh_ordered = zeros(size(ele_u));
         stats.recom_flag = zeros(size(azi_u));
+        err = zeros(size(azi_u));
+        unused_tru = 1:length(azi_u);
+        unused_est = 1:length(azi_uh);
+        new_dist = dist_matrix;
         
-        if length(peak_idx) ~= length(unique(peak_idx))
-            [~, w] = unique(peak_idx, 'stable');
-            dup = max(setdiff(1:numel(peak_idx), w));
-            dup_val = peak_idx(dup);
-            dup_idx = find(peak_idx==peak_idx(dup));
-            good_idx = find(err==min(err(dup_idx)));
-            bad_idx = setdiff(dup_idx, good_idx);
-            if length(azi_u) == length(azi_uh)
-                peak_idx(bad_idx) = setdiff(1:numel(peak_idx), unique(peak_idx));
-                err(bad_idx) = diag(dist_matrix(bad_idx, peak_idx(bad_idx)));
-                azi_uh_ordered = azi_uh(peak_idx);
-                ele_uh_ordered = ele_uh(peak_idx);
-            else
-                peak_idx(dup_idx)=0;
-                peak_idx(good_idx) = dup_val;
-                err(bad_idx) = rand*pi;
-                azi_uh_ordered(bad_idx) = rand(1, length(bad_idx))*pi;
-                ele_uh_ordered(bad_idx) = rand(1, length(bad_idx))*pi/2;
-                stats.recom_flag(1,[bad_idx]) = 1;
-            end
+        for p = 1:min(length(azi_uh), length(azi_u))            
+            [tru_idx, est_idx] = find(dist_matrix == min(new_dist(:)));
+            tru_idx = intersect(tru_idx, unused_tru);
+            est_idx = intersect(est_idx, unused_est);
+            peak_idx(tru_idx) = est_idx;
+            err(tru_idx) = dist_matrix(tru_idx, est_idx);
+            azi_uh_ordered(tru_idx) = azi_uh(est_idx);
+            ele_uh_ordered(tru_idx) = ele_uh(est_idx);
+            unused_tru = setdiff(unused_tru, tru_idx);
+            unused_est = setdiff(unused_est, est_idx);
+            new_dist = dist_matrix(unused_tru, unused_est);
         end
+        while ~isempty(find(err==0, 1))
+            bad_idx = find(err==0);
+            azi_uh_ordered(bad_idx) = rand(size(bad_idx))*pi;
+            ele_uh_ordered(bad_idx) = rand(size(bad_idx))*pi/2;
+            err(bad_idx) = rand(size(bad_idx))*pi;
+            stats.recom_flag(bad_idx) = 1;            
+        end
+        
+        stats.peak_idx = peak_idx;
         
         stats.angular_err = err;
         stats.azi_err = min(abs(azi_u - azi_uh_ordered), abs(azi_u - azi_uh_ordered - pi));

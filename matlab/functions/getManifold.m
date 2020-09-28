@@ -1,6 +1,9 @@
+% Temporal smoothing (TS) trials for the vector sensor
+% Summer 2020
+% Will Howard, {wwhoward}@vt.edu
+% wireless @ VT
+
 function [DOA_function, DOA_function_inverse, phi, tht] = getManifold(par)
-%GETMANIFOLD Summary of this function goes here
-%   Detailed explanation goes here
 
 switch par.type
     case '1d'

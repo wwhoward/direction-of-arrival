@@ -24,7 +24,7 @@ for b=1:par.blocks
         end
     end
 end
-signal.rx = awgn(rx, par.SNR); % Add AWGN at specified SNR
+signal.rx = awgn(rx, par.SNR, 'measured'); % Add AWGN at specified SNR
 
 signal.R = 1/par.snapshot * squeeze(signal.rx(1,:,:))*squeeze(signal.rx(1,:,:))'; % Calculate covariance matrix for the first block
 

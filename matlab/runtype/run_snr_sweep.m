@@ -160,31 +160,28 @@ elseif par.type == '1d'
     semilogy(par.snrSweep, rmsce_ts_ave); hold on; grid on;
     semilogy(par.snrSweep, rmsce_nts_ave);
     title('Temporal Smoothing vs. No Smoothing')
-    legend('Temporal Smoothing, 4 Blocks', 'No Smoothing')
+    legend("Temporal Smoothing, "+par.blocks+" Blocks", 'No Smoothing')
     ylim([10^-2 10^3])
     xlabel('SNR')
     ylabel('Corrected RMSE')
-    annotation('textbox', [0.2, 0.2, 0.2, 0.2], 'string', string(par.forcePath))
     
     figure('Name','fig_rmse');
     semilogy(par.snrSweep, rmse_ts_ave); hold on; grid on;
     semilogy(par.snrSweep, rmse_nts_ave);
     title('Temporal Smoothing vs. No Smoothing')
-    legend('Temporal Smoothing, 4 Blocks', 'No Smoothing')
+    legend("Temporal Smoothing, "+par.blocks+" Blocks", 'No Smoothing')
     ylim([10^-2 10^3])
     xlabel('SNR')
     ylabel('RMSE')
-    annotation('textbox', [0.2, 0.2, 0.1, 0.1], 'string', 'One signal, four paths')
     
     figure('Name','fig_norecom_rmse');
     semilogy(par.snrSweep, norecom_rmse_ts_ave); hold on; grid on;
     semilogy(par.snrSweep, norecom_rmse_nts_ave);
     title('Temporal Smoothing vs. No Smoothing : No Recombinations')
-    legend('Temporal Smoothing, 4 Blocks', 'No Smoothing')
+    legend("Temporal Smoothing, "+par.blocks+" Blocks", 'No Smoothing')
     ylim([10^-2 10^3])
     xlabel('SNR')
     ylabel('RMSE')
-    annotation('textbox', [0.2, 0.2, 0.1, 0.1], 'string', 'One signal, two paths')
 end
 
 end

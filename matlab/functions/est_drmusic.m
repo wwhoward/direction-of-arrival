@@ -7,6 +7,11 @@ function est = est_drmusic(R, par)
 % Input:
 %   R: 6x6 Covariance Matrix
 
+% if par.resType == 'measured'
+%     ele_crb = 10^(-par.SNR/10) / (2*par.blocks*par.snapshot);
+%     res = 
+% end
+
 switch par.type
     case '1d'
         phi = par.phi;

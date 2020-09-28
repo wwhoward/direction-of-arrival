@@ -3,7 +3,7 @@
 % Will Howard, {wwhoward}@vt.edu
 % wireless @ VT
 
-function [] = plott(est, paths, par, t)
+function [] = plott(est, paths, par, stats, t)
 switch par.type
     case '1d'
         figure
@@ -22,9 +22,12 @@ switch par.type
         plt = surf(par.tht, par.phi, est.spectrum); 
         hold on; 
         shading interp
-
-        for i=1:min(length(paths.AoA(:,2)), length(est.peaks_azi))
-            l_plt(i) = plot3(est.peaks_ele(i), est.peaks_azi(i), est.peak_val(i), '.r', 'MarkerSize', 30); 
+        
+        if ~isempty(stats.peak_val)
+        for i=1:length(stats.uh)
+            l_plt(i) = plot3(stats.uh(2,i), stats.uh(1,i), stats.peak_val(max(1, stats.peak_idx(i))), '.r', 'MarkerSize', 30);
+            %l_plt(i) = plot3(est.peaks_ele(i), est.peaks_azi(i), est.peak_val(i), '.r', 'MarkerSize', 30); 
+        end
         end
         for i=1:length(paths.AoA(:,2))
             p_plt(i) = plot3((paths.AoA(i, 1)), paths.AoA(i, 2), max(est.spectrum(:)), '.b', 'MarkerSize',20);
