@@ -97,7 +97,7 @@ if par.scrub==1 % Filter outliers away
     if par.type == '1d'
         Y   = [pi/2 * ones(size(Y(clean_idx, :))), sort(Y(clean_idx, :), 2)];
     elseif par.type == '2d'
-        Y   = [sort(Y(clean_idx,1:2),2), sort(Y(clean_idx,3:4),2)];
+        Y   = [sort(Y(clean_idx,1:par.K),2), sort(Y(clean_idx,par.K+1:end),2)];
     end
     
     X_nts_clean = X_nts(clean_idx, :);
