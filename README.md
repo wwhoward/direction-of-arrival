@@ -39,15 +39,16 @@ All of these parameters are contained in the struture par.
   *  Calculate statistics for this percent of trials (includes DoA estimation & statistics) 
   *  lower value speeds up processing. Only implemented in `ml_gen`
 
-* `Simulation par.Trials = 100;` % During a sweep, how many trials for each parameter 
-* `par.runtype = 'single'; `% {'single','snr_sweep','block_sweep','ml_gen'} - names are fairly self-explainitory 
-* `par.accelerate = 1;` % See below
+* Simulation
+  * `par.Trials = 100;` % During a sweep, how many trials for each parameter 
+  * `par.runtype = 'single'; `% {'single','snr_sweep','block_sweep','ml_gen'} - names are fairly self-explainitory 
+  * `par.accelerate = 1;` % See below
 
 * Save configuration 
-* `par.saveFlag = 1;` % Should anything be saved? NOTE: Overridden to 0 for runtype 'single' 
+  * `par.saveFlag = 1;` % Should anything be saved? NOTE: Overridden to 0 for runtype 'single' 
 par.saveLight = 0; % Should everything be saved or just statistics? 
-* `par.saveName = "ml_clean";` % Appends this to the name for ease of identification (edited later to be unique) 
-* `par.savePlots = 0;` % Save plots as fig, eps, png
+  * `par.saveName = "ml_clean";` % Appends this to the name for ease of identification (edited later to be unique) 
+  * `par.savePlots = 0;` % Save plots as fig, eps, png
 
 # How Temporal Smoothing works
 
