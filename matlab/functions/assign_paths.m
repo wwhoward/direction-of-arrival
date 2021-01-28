@@ -14,7 +14,7 @@ function paths = assign_paths(par)
 % paths.AoA : angles of arrival, random on the uniform sphere
 % paths.signal_vector(k).path(p) : signal vector for the p'th arrival of the k'th signal
 K = par.K;
-load('Helper/8inSim/mat/v_pol_max.mat', 'arr');
+%load('Helper/8inSim/mat/v_pol_max.mat', 'arr');
 manifold = arr;
 
 if par.forceMulti && isempty(par.forcePath)
