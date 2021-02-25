@@ -110,10 +110,11 @@ par.fusion_interval = par.fusion_interval/180 * pi; % convert to radians for com
 par.fusion_res = par.fusion_res/par.fusion_interval;
 
 if exist('par2', 'var') % If pre-saved parameters were loaded, inject them here. 
-sameFields = string(intersect(fieldnames(par2), fieldnames(par)));
-    for f = 1:length(sameFields)
-        par.(sameFields(f)) = par2.(sameFields(f));    
-    end
+%     sameFields = string(intersect(fieldnames(par2), fieldnames(par)));
+%     for f = 1:length(sameFields)
+%         par.(sameFields(f)) = par2.(sameFields(f));
+%     end
+par = par2;
 end
 
 %%
