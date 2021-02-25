@@ -13,9 +13,10 @@ function paths = assign_paths(par)
 % paths.multi : vector showing how many paths per source
 % paths.AoA : angles of arrival, random on the uniform sphere
 % paths.signal_vector(k).path(p) : signal vector for the p'th arrival of the k'th signal
+
 K = par.K;
 %load('Helper/8inSim/mat/v_pol_max.mat', 'arr');
-manifold = arr;
+%manifold = arr;
 
 if par.forceMulti && isempty(par.forcePath)
     if K==1
@@ -39,16 +40,33 @@ elseif isempty(par.forcePath)
         options=[1];
         r=1;
     elseif K==2
-        options=[1,2;1,1];
+        options=...
+            [1,2;...
+            1,1];
         r=randi(K);
     elseif K==3
-        options=[1,2,3;1,1,2;1,1,1];
+        options=...
+            [1,2,3;...
+            1,1,2;...
+            1,1,1];
         r=randi(K);
     elseif K==4
-        options=[1,2,3,4;1,1,2,3;1,1,2,2;1,1,1,2;1,1,1,1];
+        options=...
+            [1,2,3,4;...
+            1,1,2,3;...
+            1,1,2,2;...
+            1,1,1,2;...
+            1,1,1,1];
         r=randi(5);
     elseif K==5
-        options=[1,2,3,4,5;1,1,2,3,4;1,1,1,2,3;1,1,1,1,2;1,1,1,1,1;1,1,2,2,3;1,1,1,2,2];
+        options=...
+            [1,2,3,4,5;...
+            1,1,2,3,4;...
+            1,1,1,2,3;...
+            1,1,1,1,2;...
+            1,1,1,1,1;...
+            1,1,2,2,3;...
+            1,1,1,2,2];
         r=randi(7);
     end
 else
@@ -136,8 +154,8 @@ switch par.type
         
         if 1==1 %any(strcmp(par.estimator,'fusion')) % Change back to just fusion
             % These are now in radians for compatability with the rest of everything
-            ele_endpoints = [0:par.fusion_interval:(pi-par.fusion_interval) ; par.fusion_interval:par.fusion_interval:pi]';
-            azi_endpoints = [0:par.fusion_interval:((2*pi)-par.fusion_interval) ; par.fusion_interval:par.fusion_interval:(2*pi)]';
+            ele_endpoints = [0:par.fusion.interval:(pi-par.fusion.interval) ; par.fusion.interval:par.fusion.interval:pi]';
+            azi_endpoints = [0:par.fusion.interval:((2*pi)-par.fusion.interval) ; par.fusion.interval:par.fusion.interval:(2*pi)]';
             
             paths.ele_intind = sum(((paths.AoA(:,1)'>ele_endpoints(:,1)) & (paths.AoA(:,1)' < ele_endpoints(:,2))),2);
             paths.azi_intind = sum(((paths.AoA(:,2)'>azi_endpoints(:,1)) & (paths.AoA(:,2)' < azi_endpoints(:,2))),2);
@@ -201,7 +219,7 @@ switch par.type
         end
         if any(strcmp(par.estimator,'fusion'))            
             % These are now in radians for compatability with the rest of everything
-            azi_endpoints = [[0:par.fusion_interval:((2*pi)-par.fusion_interval)]',[par.fusion_interval:par.fusion_interval:(2*pi)]'];
+            azi_endpoints = [[0:par.fusion.interval:((2*pi)-par.fusion.interval)]',[par.fusion.interval:par.fusion.interval:(2*pi)]'];
             
             paths.azi_intind = sum(((paths.AoA(:,2)'>azi_endpoints(:,1)) & (paths.AoA(:,2)' < azi_endpoints(:,2))),2);                 
         end
