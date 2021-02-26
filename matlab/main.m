@@ -12,8 +12,8 @@ clc,clear,close all
 addpath('data', 'Helper', 'functions', 'functions/estimators', 'runtype', 'configs', 'Helper/mtimesx', 'Helper/Eig3Folder', 'Helper/extrema', 'Helper/munkres'); 
 
 % Load saved parameters if desired
-%par2 = load('jet_20oct2'); % Load saved parameters. Note that if the saved file doesn't have par.x, it will be replaced by whatever par.x is below. 
-%par2 = par2.par;
+par2 = load('yue_5_uncorrelated_fullsim'); % Load saved parameters. Note that if the saved file doesn't have par.x, it will be replaced by whatever par.x is below. 
+par2 = par2.par;
 
 %%
 %---------------------\\-------------------------
