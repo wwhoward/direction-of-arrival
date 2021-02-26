@@ -1,4 +1,4 @@
-function [X, Y, RMSE, stats] = run_ml_gen(par)
+function [X, Y, Y_order, RMSE, stats] = run_ml_gen(par)
 clc
 X = zeros(par.Trials, 42);
 X_nts = X;
@@ -14,7 +14,7 @@ switch par.type
         
         recom_percent_ts = zeros(1, par.Trials);
         if isempty(par.forcePath)
-            Y = zeros(par.Trials, par.K);
+            Y = zeros(par.Trials, max(par.K_range));
         else
             Y = zeros(par.Trials, length(par.forcePath));
         end
@@ -25,17 +25,20 @@ switch par.type
         if isempty(par.forcePath)
             Y = zeros(par.Trials, par.K*2);
         else
-            Y = zeros(par.Trials, length(par.forcePath)*2);
+            Y = zeros(par.Trials, par.K*2);
         end
 end
 for trial = 1:par.Trials
     
     % Display Progress
-    if mod(trial, round(0.1*par.Trials))==0
+    if mod(trial, round(0.01*par.Trials))==0
         clc
         fprintf("%i%% complete", 100*trial/par.Trials)
     end
     par.SNR = (par.snrSweep(end)-par.snrSweep(1)).*rand+par.snrSweep(1);
+    if ~isempty(par.K_range)
+        par.K   = par.K_range(trial);
+    end
     
     paths = assign_paths(par);
     signal = transmitter(paths, par);
@@ -53,15 +56,15 @@ for trial = 1:par.Trials
     X(trial,:) = S;
     switch par.type 
         case '1d'
-            Y(trial,:) = paths.AoA(:,2);
+            Y(trial,:) = [paths.AoA(:,2), zeros(1, size(Y,2)-par.K)];
         case '2d'
-            Y(trial,:) = [paths.AoA(:,1);paths.AoA(:,2)]';
+            Y(trial,:) = [sort(paths.AoA(:,1));sort(paths.AoA(:,2)); zeros(size(Y,2) - par.K*2, 1)]';
     end
     
     
     X_nts(trial,:) = S_nts;
-    
-    if rand<=par.sampling
+    r = rand;
+    if r<=par.sampling
         est_ts = est_drmusic(signal.ts, par);
         
         stats.ts(sample) = calc_stats(est_ts, signal, par, paths);
@@ -80,13 +83,17 @@ for trial = 1:par.Trials
             norecom_RMSAE_ts(sample) = stats.ts(sample).norecom_rmsae_deg;
         end
         sample=sample+1;
+    else
+        stats = [];
     end
 end
-switch par.type
-    case '1d'
-        RMSE = RMSE_ts;
-    case '2d'
-        RMSE = RMSAE_ts;
+if par.sampling  % TODO: bad! fix this.
+    switch par.type
+        case '1d'
+            RMSE = RMSE_ts;
+        case '2d'
+            RMSE = RMSAE_ts;
+    end
 end
 if par.scrub==1 % Filter outliers away
     dirty_X = X;
@@ -105,9 +112,15 @@ else
     if par.type == '1d'
         Y   = [pi/2 * ones(size(Y(:, :))), sort(Y(:, :), 2)];
     elseif par.type == '2d'
-        Y   = [sort(Y(:,1:par.K),2), sort(Y(:,par.K+1:end),2)];
+        %Y   = [sort(Y(:,1:par.K),2), sort(Y(:,par.K+1:end),2)];
+        
     end
 end
+%Y_doa = Y;
+Y_order = par.K_range';
 
+if ~exist('RMSE', 'var')
+    RMSE = [];
+end
 end
 
