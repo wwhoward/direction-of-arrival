@@ -12,8 +12,8 @@ clc,clear,close all
 addpath('data', 'Helper', 'functions', 'functions/estimators', 'runtype', 'configs', 'Helper/mtimesx', 'Helper/Eig3Folder', 'Helper/extrema', 'Helper/munkres'); 
 
 % Load saved parameters if desired
-par2 = load('test'); % Load saved parameters. Note that if the saved file doesn't have par.x, it will be replaced by whatever par.x is below. 
-par2 = par2.par;
+% par2 = load('test'); % Load saved parameters. Note that if the saved file doesn't have par.x, it will be replaced by whatever par.x is below. 
+% par2 = par2.par;
 
 %%
 %---------------------\\-------------------------
@@ -21,11 +21,11 @@ par2 = par2.par;
 %---------------------\\-------------------------
 % Major Parameters: 
 par.K = 4;                  % Keep K <= 4: This is the total incident paths on the sensor. This is overwritten if par.forcePath is not empty. 
-par.forcePath = [1 1 1 1];    % set par.forcePath = [] for random path configuration. Overrides par.K, so be careful using this
+par.forcePath = [1 2 3 4];    % set par.forcePath = [] for random path configuration. Overrides par.K, so be careful using this
 par.type = '2d';            % Problem dimensionality in {'1d', '2d'}. Effects MUSIC-type searches as well as DoA ground truth assignments. 
 par.Trials = 100;           % During a sweep, how many trials for each parameter
 par.runtype = 'single';  % {'single','snr_sweep','block_sweep','ml_gen'} - names are fairly self-explainitory
-par.estimator = ["drmusic", "music"];  % Vector of strings, can be {'music', 'drmusic','fusion','ml'}
+par.estimator = ["drmusic"];  % Vector of strings, can be {'music', 'drmusic','fusion','ml'}
 par.manifold = 'sim';       % {'sim', '8in'} Which manifold to use for data simulation. Sim is normal, 8in is ASI
 
 
@@ -65,8 +65,8 @@ par.smooth = ["ts", "nts"]; %Whether to do temporal smoothing (ts) or not. Can a
 par.accelerate = 1;         % See readme
 
 % Fusion
-par.fusion_interval = 2;    % How many degrees per fusion interval (in degrees for human intepretability)
-par.fusion_res = 5;         % How many points to test in each interval
+par.fusion.interval = 2;    % How many degrees per fusion interval (in degrees for human intepretability)
+par.fusion.res = 5;         % How many points to test in each interval
 
 % Paths to model directories (dummies for now)
 par.interval_model_path = 0;
@@ -102,12 +102,12 @@ if strcmp(par.manifold, '8in') % Fix signal parameters to be within the bounds o
     if par.eleRange(1) < pi/4; par.eleRange(1) = pi/4; end
     if par.eleRange(2) > 10*pi/18; par.eleRange(2) = 10*pi/18; end
 end
-if mod(180,par.fusion_interval)~=0 % Calculate an appropriate fusion interval, that is close to the requested value. Also convert to radians. 
-    par.fusion_interval = 180/floor(180/par.fusion_interval);
+if mod(180,par.fusion.interval)~=0 % Calculate an appropriate fusion interval, that is close to the requested value. Also convert to radians. 
+    par.fusion.interval = 180/floor(180/par.fusion.interval);
 end
-par.fusion_interval = par.fusion_interval/180 * pi; % convert to radians for compatability and speed
+par.fusion.interval = par.fusion.interval/180 * pi; % convert to radians for compatability and speed
 
-par.fusion_res = par.fusion_res/par.fusion_interval;
+par.fusion.res = par.fusion.res/par.fusion.interval;
 
 if exist('par2', 'var') % If pre-saved parameters were loaded, inject them here. 
 %     sameFields = string(intersect(fieldnames(par2), fieldnames(par)));
